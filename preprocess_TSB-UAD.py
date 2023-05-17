@@ -1,9 +1,11 @@
 import os
+import json
 from os import walk
 import numpy as np
 import pandas as pd
 from scipy.signal import argrelextrema
 from statsmodels.tsa.stattools import acf
+np.seterr(divide='ignore', invalid='ignore')
 
 def my_find_length(data):
     if len(data.shape)>1:
@@ -19,7 +21,7 @@ def my_find_length(data):
         return -1
 
 if __name__ == '__main__':
-    filepath = 'your_path_to_TSB-UAD-Public/'
+    filepath = 'data/TSB-UAD-Public/'
     all_folders = []
     for (dirpath, dirnames, filenames) in walk(filepath):
         all_folders.extend(dirnames)
@@ -49,17 +51,24 @@ if __name__ == '__main__':
                                 # print('Skip %s/%s/%s.meta' % (filepath, folder, fn))
                                 skip_cases += 1
                             else:
-                                with open('%s/%s/%s.meta' % (filepath, folder, fn), 'w') as the_file:
-                                    the_file.write('{},{}\n'.format(T, trainTestSplit))     
-                                eval_cases += 1                       
-                                data = np.concatenate([train_data, test_data])
-                                label = np.concatenate([train_label, test_label])
-                                csv_data = np.zeros([data.shape[0], 2])
-                                csv_data[:, 0] = data
-                                csv_data[:, 1] = label
-                                np.savetxt('%s/%s/%s.csv' % (filepath, folder, fn), csv_data)                                      
+                                eval_cases += 1     
+                                data = {}
+                                data['period'] = int(T)
+                                data['trainTestSplit'] = int(trainTestSplit)
+                                data['ts'] = [float(x) for x in list(np.concatenate([train_data, test_data]))]
+                                data['label'] = [int(x) for x in list(np.concatenate([train_label, test_label]))]
+                                with open('%s/%s/%s.json' % (filepath, folder, fn), "w") as outfile:
+                                    json.dump(data, outfile)
+                                # with open('%s/%s/%s.meta' % (filepath, folder, fn), 'w') as the_file:
+                                    # the_file.write('{},{}\n'.format(T, trainTestSplit))     
+                                # data = np.concatenate([train_data, test_data])
+                                # label = np.concatenate([train_label, test_label])
+                                # csv_data = np.zeros([data.shape[0], 2])
+                                # csv_data[:, 0] = data
+                                # csv_data[:, 1] = label
+                                # np.savetxt('%s/%s/%s.csv' % (filepath, folder, fn), csv_data)                                      
                     else:
-                        df = pd.read_csv('%s/%s/%s' % (filepath, folder, fn), header=None).to_numpy()
+                        df = pd.read_csv('%s/%s/%s' % (filepath, folder, fn), header=None).dropna().to_numpy()
                         data = df[:,0].astype(float)
                         label = df[:,1]
                         trainTestSplit = min(3000, len(data)//10)
@@ -74,14 +83,24 @@ if __name__ == '__main__':
                                 # print('Skip %s/%s/%s.meta' % (filepath, folder, fn))
                                 skip_cases += 1
                             else:
-                                with open('%s/%s/%s.meta' % (filepath, folder, fn), 'w') as the_file:
-                                    the_file.write('{},{}\n'.format(T, trainTestSplit))
-                                eval_cases += 1          
-                                csv_data = np.zeros([data.shape[0], 2])
-                                csv_data[:, 0] = data
-                                csv_data[:, 1] = label
-                                np.savetxt('%s/%s/%s.csv' % (filepath, folder, fn), csv_data)                                
-            print('%s, eval cases:%s, skip cases:%s' % (folder, eval_cases, skip_cases))
+                                eval_cases += 1
+                                fdata = {}
+                                fdata['period'] = int(T)
+                                fdata['trainTestSplit'] = int(trainTestSplit)
+                                fdata['ts'] = [float(x) for x in list(data)]
+                                fdata['label'] = [int(x) for x in list(label)]
+                                if folder == "OPPORTUNITY" and "fn" == "S4-ADL5.test.csv@55.out":
+                                    import IPython as ip
+                                    ip.embed()
+                                with open('%s/%s/%s.json' % (filepath, folder, fn), "w") as outfile:
+                                    json.dump(fdata, outfile)
+                                # with open('%s/%s/%s.meta' % (filepath, folder, fn), 'w') as the_file:
+                                #     the_file.write('{},{}\n'.format(T, trainTestSplit))
+                                # csv_data = np.zeros([data.shape[0], 2])
+                                # csv_data[:, 0] = data
+                                # csv_data[:, 1] = label
+                                # np.savetxt('%s/%s/%s.csv' % (filepath, folder, fn), csv_data)                                
+            print('%s, eval number of ts:%s, skip number of ts:%s' % (folder, eval_cases, skip_cases))
 
 
     
